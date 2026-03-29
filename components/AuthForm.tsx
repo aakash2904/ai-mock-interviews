@@ -3,6 +3,7 @@
 import { z } from "zod";
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { toast } from "sonner";
 import { auth } from "@/firebase/client";
 import { useForm } from "react-hook-form";
@@ -18,6 +19,7 @@ import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 
 import { signIn, signUp } from "@/lib/actions/auth.action";
+import { extractResumeText } from "@/lib/actions/resume.action";
 import FormField from "./FormField";
 
 const authFormSchema = (type: FormType) => {
@@ -30,6 +32,8 @@ const authFormSchema = (type: FormType) => {
 
 const AuthForm = ({ type }: { type: FormType }) => {
   const router = useRouter();
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const formSchema = authFormSchema(type);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -45,6 +49,22 @@ const AuthForm = ({ type }: { type: FormType }) => {
     try {
       if (type === "sign-up") {
         const { name, email, password } = data;
+        let resumeText = "";
+
+        if (resumeFile) {
+          setIsProcessing(true);
+          const formData = new FormData();
+          formData.append("file", resumeFile);
+          const resumeResult = await extractResumeText(formData);
+          if (resumeResult.success) {
+            resumeText = resumeResult.text;
+          } else {
+            toast.error(resumeResult.message || "Failed to parse resume.");
+            setIsProcessing(false);
+            return;
+          }
+          setIsProcessing(false);
+        }
 
         const userCredential = await createUserWithEmailAndPassword(
           auth,
@@ -57,6 +77,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
           name: name!,
           email,
           password,
+          resumeText,
         });
 
         if (!result.success) {
@@ -113,13 +134,27 @@ const AuthForm = ({ type }: { type: FormType }) => {
             className="w-full space-y-6 mt-4 form"
           >
             {!isSignIn && (
-              <FormField
-                control={form.control}
-                name="name"
-                label="Name"
-                placeholder="Your Name"
-                type="text"
-              />
+              <>
+                <FormField
+                  control={form.control}
+                  name="name"
+                  label="Name"
+                  placeholder="Your Name"
+                  type="text"
+                />
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Resume / CV (PDF)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <p className="text-[13px] text-muted-foreground">Upload your resume to get personalized interview questions.</p>
+                </div>
+              </>
             )}
 
             <FormField
@@ -138,8 +173,8 @@ const AuthForm = ({ type }: { type: FormType }) => {
               type="password"
             />
 
-            <Button className="btn" type="submit">
-              {isSignIn ? "Sign In" : "Create an Account"}
+            <Button className="btn" type="submit" disabled={isProcessing}>
+              {isProcessing ? "Processing..." : isSignIn ? "Sign In" : "Create an Account"}
             </Button>
           </form>
         </Form>

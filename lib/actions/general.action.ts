@@ -33,6 +33,11 @@ export async function createFeedback(params: CreateFeedbackParams) {
         - **Problem-Solving**: Ability to analyze problems and propose solutions.
         - **Cultural & Role Fit**: Alignment with company values and job role.
         - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
+
+        Crucially:
+        - Identify 3+ specific "strengths".
+        - Identify 3+ specific "areasForImprovement" (weaknesses/mistakes).
+        - Final Assessment should summarize the candidate's performance.
         `,
       system:
         "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
@@ -107,9 +112,9 @@ export async function getLatestInterviews(
     .map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }))
+    }) as unknown as Interview)
     .filter((interview) => interview.finalized && interview.userId !== userId)
-    .slice(0, limit) as Interview[];
+    .slice(0, limit);
 }
 
 export async function getInterviewsByUserId(
@@ -126,8 +131,8 @@ export async function getInterviewsByUserId(
     .map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }))
+    }) as unknown as Interview)
     .sort((a, b) =>
       new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-    ) as Interview[];
+    );
 }

@@ -28,6 +28,8 @@ const Agent = ({
   feedbackId,
   type,
   questions,
+  role,
+  interviewType,
 }: AgentProps) => {
   const router = useRouter();
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
@@ -98,7 +100,18 @@ const Agent = ({
       });
 
       if (success && id) {
-        router.push(`/interview/${interviewId}/feedback`);
+        const isTechnicalOrDev = 
+          role?.toLowerCase().includes("developer") || 
+          role?.toLowerCase().includes("engineer") || 
+          role?.toLowerCase().includes("software") ||
+          interviewType === "Technical" || 
+          interviewType === "Mixed";
+
+        if (isTechnicalOrDev) {
+          router.push(`/interview/${interviewId}/coding`);
+        } else {
+          router.push(`/interview/${interviewId}/feedback`);
+        }
       } else {
         console.log("Error saving feedback");
         router.push("/");
@@ -112,19 +125,30 @@ const Agent = ({
         handleGenerateFeedback(messages);
       }
     }
-  }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
+  }, [messages, callStatus, feedbackId, interviewId, router, type, userId, role, interviewType]);
 
   const handleCall = async () => {
     try {
       setCallStatus(CallStatus.CONNECTING);
 
       if (type === "generate") {
-        await vapi.start(generatorAssistant, {
-          variableValues: {
-            username: userName,
-            userid: userId,
-          },
-        });
+        const customGenerator = JSON.parse(JSON.stringify(generatorAssistant));
+        if (customGenerator.model?.messages?.length > 0) {
+          customGenerator.model.messages[0].content = customGenerator.model.messages[0].content.replace(
+            "{{username}}",
+            userName
+          );
+        }
+        
+        // Replace userid in the tool parameter description so the AI passes it
+        if (customGenerator.model?.tools?.length > 0) {
+          const useridProp = customGenerator.model.tools[0].function.parameters.properties.userid;
+          if (useridProp) {
+            useridProp.description = useridProp.description.replace("{{userid}}", userId || "");
+          }
+        }
+
+        await vapi.start(customGenerator);
       } else {
         let formattedQuestions = "";
         if (questions) {
@@ -133,11 +157,15 @@ const Agent = ({
             .join("\n");
         }
 
-        await vapi.start(interviewer, {
-          variableValues: {
-            questions: formattedQuestions,
-          },
-        });
+        const customInterviewer = JSON.parse(JSON.stringify(interviewer));
+        if (customInterviewer.model?.messages?.length > 0) {
+          customInterviewer.model.messages[0].content = customInterviewer.model.messages[0].content.replace(
+            "{{questions}}",
+            formattedQuestions
+          );
+        }
+
+        await vapi.start(customInterviewer);
       }
     } catch (error: unknown) {
       console.error("VAPI call failed:", error);
