@@ -10,12 +10,14 @@ export async function createFeedback(params: CreateFeedbackParams) {
   const { interviewId, userId, transcript, feedbackId } = params;
 
   try {
-    const formattedTranscript = transcript
-      .map(
-        (sentence: { role: string; content: string }) =>
-          `- ${sentence.role}: ${sentence.content}\n`
-      )
-      .join("");
+    const formattedTranscript = transcript?.length > 0 
+      ? transcript
+          .map(
+            (sentence: { role: string; content: string }) =>
+              `- ${sentence.role}: ${sentence.content}\n`
+          )
+          .join("")
+      : "No transcript available. Candidate did not speak or answer questions.";
 
     const { object } = await generateObject({
       model: google("gemini-2.0-flash-001", {

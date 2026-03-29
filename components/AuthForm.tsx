@@ -19,7 +19,6 @@ import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 
 import { signIn, signUp } from "@/lib/actions/auth.action";
-import { extractResumeText } from "@/lib/actions/resume.action";
 import FormField from "./FormField";
 
 const authFormSchema = (type: FormType) => {
@@ -55,14 +54,27 @@ const AuthForm = ({ type }: { type: FormType }) => {
           setIsProcessing(true);
           const formData = new FormData();
           formData.append("file", resumeFile);
-          const resumeResult = await extractResumeText(formData);
-          if (resumeResult.success) {
-            resumeText = resumeResult.text;
-          } else {
-            toast.error(resumeResult.message || "Failed to parse resume.");
+          
+          try {
+            const res = await fetch("/api/parse-resume", {
+              method: "POST",
+              body: formData,
+            });
+            const resumeResult = await res.json();
+            
+            if (resumeResult.success) {
+              resumeText = resumeResult.text;
+            } else {
+              toast.error(resumeResult.message || "Failed to parse resume.");
+              setIsProcessing(false);
+              return;
+            }
+          } catch (e) {
+            toast.error("Failed to upload the resume file.");
             setIsProcessing(false);
             return;
           }
+          
           setIsProcessing(false);
         }
 

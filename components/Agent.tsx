@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
@@ -36,6 +36,8 @@ const Agent = ({
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const isGeneratingFeedback = React.useRef(false);
 
   useEffect(() => {
     const onCallStart = () => {
@@ -90,6 +92,10 @@ const Agent = ({
     }
 
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
+      if (isGeneratingFeedback.current) return;
+      isGeneratingFeedback.current = true;
+      setIsGenerating(true);
+      
       console.log("handleGenerateFeedback");
 
       const { success, feedbackId: id } = await createFeedback({
@@ -114,6 +120,7 @@ const Agent = ({
         }
       } else {
         console.log("Error saving feedback");
+        setIsGenerating(false);
         router.push("/");
       }
     };
@@ -232,7 +239,11 @@ const Agent = ({
       )}
 
       <div className="w-full flex justify-center">
-        {callStatus !== "ACTIVE" ? (
+        {isGenerating ? (
+          <button className="btn-call opacity-50 cursor-not-allowed">
+            Analyzing your performance...
+          </button>
+        ) : callStatus !== "ACTIVE" ? (
           <button className="relative btn-call" onClick={() => handleCall()}>
             <span
               className={cn(
@@ -243,13 +254,13 @@ const Agent = ({
 
             <span className="relative">
               {callStatus === "INACTIVE" || callStatus === "FINISHED"
-                ? "Call"
+                ? "Start Call"
                 : ". . ."}
             </span>
           </button>
         ) : (
           <button className="btn-disconnect" onClick={() => handleDisconnect()}>
-            End
+            End Interview
           </button>
         )}
       </div>
