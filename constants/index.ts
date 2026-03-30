@@ -178,7 +178,7 @@ Your task is to naturally collect the following information:
 4. Interview Type (technical, behavioural, or mixed)
 5. Amount of questions (suggest 5 to 10).
 
-Mention that you will also review their resume if they have uploaded one. Ask one thing at a time. Once you have EVERYTHING, use the generate_interview tool to save the interview setup, and let the user know their interview is ready.`,
+Ask one thing at a time politely. Once you have EVERYTHING, use the generate_interview tool to save the interview setup, and let the user know their interview is ready.`,
       },
     ],
     tools: [
@@ -221,33 +221,13 @@ Mention that you will also review their resume if they have uploaded one. Ask on
 
 export const feedbackSchema = z.object({
   totalScore: z.number(),
-  categoryScores: z.tuple([
+  categoryScores: z.array(
     z.object({
-      name: z.literal("Communication Skills"),
+      name: z.string().describe("Category Name, e.g., Communication Skills, Technical Knowledge, Problem Solving, Cultural Fit"),
       score: z.number(),
       comment: z.string(),
-    }),
-    z.object({
-      name: z.literal("Technical Knowledge"),
-      score: z.number(),
-      comment: z.string(),
-    }),
-    z.object({
-      name: z.literal("Problem Solving"),
-      score: z.number(),
-      comment: z.string(),
-    }),
-    z.object({
-      name: z.literal("Cultural Fit"),
-      score: z.number(),
-      comment: z.string(),
-    }),
-    z.object({
-      name: z.literal("Confidence and Clarity"),
-      score: z.number(),
-      comment: z.string(),
-    }),
-  ]),
+    })
+  ).min(3),
   strengths: z.array(z.string()),
   areasForImprovement: z.array(z.string()),
   finalAssessment: z.string(),

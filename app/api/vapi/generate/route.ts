@@ -5,7 +5,21 @@ import { db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 
 export async function POST(request: Request) {
-  const { type, role, level, techstack, amount, userid } = await request.json();
+  const body = await request.json();
+  
+  // VAPI wraps tool inputs inside the message object
+  let toolArgs = body;
+  let toolCallId = "mock-id";
+  if (body?.message?.type === "tool-calls" && body?.message?.toolWithToolCallList?.length > 0) {
+    const list = body.message.toolWithToolCallList;
+    const callData = list.find((t: any) => t.toolCall.function.name === "generate_interview");
+    if (callData) {
+      toolArgs = callData.toolCall.function.arguments;
+      toolCallId = callData.toolCall.id;
+    }
+  }
+
+  const { type, role, level, techstack, amount, userid } = toolArgs;
 
   try {
     let resumeText = "";
@@ -53,10 +67,18 @@ export async function POST(request: Request) {
 
     await db.collection("interviews").add(interview);
 
-    return Response.json({ success: true }, { status: 200 });
+    // VAPI requires a 'results' array mapped to the tool call ids
+    return Response.json({ 
+      results: [
+        {
+          toolCallId: toolCallId,
+          result: "Interview successfully generated and saved."
+        }
+      ]
+    }, { status: 200 });
   } catch (error) {
     console.error("Error:", error);
-    return Response.json({ success: false, error: error }, { status: 500 });
+    return Response.json({ error: error }, { status: 500 });
   }
 }
 
