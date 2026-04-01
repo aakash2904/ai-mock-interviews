@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
 import { interviewer, generatorAssistant } from "@/constants";
-import { createFeedback } from "@/lib/actions/general.action";
+import { createFeedback, getInterviewsByUserId } from "@/lib/actions/general.action";
 
 enum CallStatus {
   INACTIVE = "INACTIVE",
@@ -110,8 +110,8 @@ const Agent = ({
           role?.toLowerCase().includes("developer") || 
           role?.toLowerCase().includes("engineer") || 
           role?.toLowerCase().includes("software") ||
-          interviewType === "Technical" || 
-          interviewType === "Mixed";
+          interviewType?.toLowerCase().includes("technical") || 
+          interviewType?.toLowerCase().includes("mixed");
 
         if (isTechnicalOrDev) {
           router.push(`/interview/${interviewId}/coding`);
@@ -127,7 +127,27 @@ const Agent = ({
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        router.push("/");
+        // Find the latest interview created for this user and redirect to it
+        const findAndRedirect = async () => {
+          if (isGeneratingFeedback.current) return;
+          isGeneratingFeedback.current = true;
+          setIsGenerating(true);
+          try {
+            // Small delay to ensure Firebase has saved the interview
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const interviews = await getInterviewsByUserId(userId!);
+            if (interviews && interviews.length > 0) {
+              const latestInterview = interviews[0];
+              router.push(`/interview/${latestInterview.id}`);
+            } else {
+              router.push("/");
+            }
+          } catch (error) {
+            console.error("Error finding interview:", error);
+            router.push("/");
+          }
+        };
+        findAndRedirect();
       } else {
         handleGenerateFeedback(messages);
       }
@@ -241,7 +261,7 @@ const Agent = ({
       <div className="w-full flex justify-center">
         {isGenerating ? (
           <button className="btn-call opacity-50 cursor-not-allowed">
-            Analyzing your performance...
+            {type === "generate" ? "Setting up your interview..." : "Analyzing your performance..."}
           </button>
         ) : callStatus !== "ACTIVE" ? (
           <button className="relative btn-call" onClick={() => handleCall()}>
