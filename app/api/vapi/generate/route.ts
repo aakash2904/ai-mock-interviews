@@ -14,7 +14,9 @@ export async function POST(request: Request) {
     const list = body.message.toolWithToolCallList;
     const callData = list.find((t: any) => t.toolCall.function.name === "generate_interview");
     if (callData) {
-      toolArgs = callData.toolCall.function.arguments;
+      toolArgs = typeof callData.toolCall.function.arguments === "string" 
+        ? JSON.parse(callData.toolCall.function.arguments) 
+        : callData.toolCall.function.arguments;
       toolCallId = callData.toolCall.id;
     }
   }
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
       : "";
 
     const { text: questions } = await generateText({
-      model: google("gemini-2.0-flash-001"),
+      model: google("gemini-1.5-flash"),
       prompt: `Prepare questions for a job interview.
         The job role is ${role}.
         The job experience level is ${level}.
