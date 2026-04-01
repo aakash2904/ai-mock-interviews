@@ -232,7 +232,7 @@ export const feedbackSchema = z.object({
       score: z.number(),
       comment: z.string(),
     })
-  ).min(3),
+  ),
   strengths: z.array(z.string()),
   areasForImprovement: z.array(z.string()),
   finalAssessment: z.string(),
