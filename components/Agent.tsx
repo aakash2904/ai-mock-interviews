@@ -3,6 +3,8 @@
 import Image from "next/image";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Send, RepeatIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
@@ -37,6 +39,7 @@ const Agent = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [textMessage, setTextMessage] = useState("");
   const isGeneratingFeedback = React.useRef(false);
 
   useEffect(() => {
@@ -120,6 +123,7 @@ const Agent = ({
         }
       } else {
         console.log("Error saving feedback");
+        toast.error("An error occurred while evaluating your interview. Please reach out to support if this persists.");
         setIsGenerating(false);
         router.push("/");
       }
@@ -209,6 +213,25 @@ const Agent = ({
     vapi.stop();
   };
 
+  const handleSendMessage = () => {
+    if (!textMessage.trim()) return;
+    vapi.send({
+      type: "add-message",
+      message: { role: "user", content: textMessage },
+    });
+    const newMessage = { role: "user", content: textMessage } as SavedMessage;
+    setMessages((prev) => [...prev, newMessage]);
+    setTextMessage("");
+  };
+
+  const handleRepeat = () => {
+    vapi.send({
+      type: "add-message",
+      message: { role: "user", content: "Could you please repeat your last question?" },
+    });
+    toast.success("Requested interviewer to repeat...", { duration: 2000 });
+  };
+
   return (
     <>
       <div className="call-view">
@@ -279,9 +302,38 @@ const Agent = ({
             </span>
           </button>
         ) : (
-          <button className="btn-disconnect" onClick={() => handleDisconnect()}>
-            End Interview
-          </button>
+          <div className="flex flex-col gap-4 items-center w-full max-w-2xl px-4 mt-6">
+            <div className="flex w-full gap-2 items-center">
+              <input
+                type="text"
+                value={textMessage}
+                onChange={(e) => setTextMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSendMessage();
+                }}
+                placeholder="Type your answer here..."
+                className="flex-1 bg-dark-200 border border-dark-100 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-primary-200"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="bg-primary-200 p-3 rounded-lg hover:bg-[#12e3ac] transition-colors"
+                title="Send Message"
+              >
+                <Send size={20} className="text-black" />
+              </button>
+              <button
+                onClick={handleRepeat}
+                className="bg-dark-100 border border-dark-100 p-3 rounded-lg hover:bg-dark-200 transition-colors"
+                title="Repeat Interviewer's Last Question"
+              >
+                <RepeatIcon size={20} className="text-gray-300" />
+              </button>
+            </div>
+            
+            <button className="btn-disconnect mt-2" onClick={() => handleDisconnect()}>
+              End Interview
+            </button>
+          </div>
         )}
       </div>
     </>

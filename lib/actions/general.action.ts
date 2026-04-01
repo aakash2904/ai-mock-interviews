@@ -36,10 +36,10 @@ export async function createFeedback(params: CreateFeedbackParams) {
         - **Cultural & Role Fit**: Alignment with company values and job role.
         - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
 
-        Crucially:
-        - Identify 3+ specific "strengths".
-        - Identify 3+ specific "areasForImprovement" (weaknesses/mistakes).
-        - Final Assessment should summarize the candidate's performance.
+        Crucially, you must return valid data for the schema:
+        - Identify at least 3 specific "strengths". (If the interview was too short or silent, output generic placeholders like "Needs more data", "N/A", "Participation").
+        - Identify at least 3 specific "areasForImprovement" (weaknesses/mistakes). (If too short, output "Speak more", "Provide detailed answers", "Engage with the interviewer").
+        - Final Assessment should summarize the candidate's performance. (If too short, state that the interview lacked sufficient data to evaluate properly).
         `,
       system:
         "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",

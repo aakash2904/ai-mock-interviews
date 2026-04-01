@@ -1,4 +1,5 @@
-import { generateText } from "ai";
+import { generateObject } from "ai";
+import { z } from "zod";
 import { google } from "@ai-sdk/google";
 
 import { db } from "@/firebase/admin";
@@ -36,8 +37,13 @@ export async function POST(request: Request) {
       ? `The candidate's resume/CV text is below to help you tailor the questions to their actual experience, projects, and skills. Do NOT mention that you are reading their resume, just ask questions naturally based on it.\n\nResume content:\n###\n${resumeText}\n###\n`
       : "";
 
-    const { text: questions } = await generateText({
-      model: google("gemini-1.5-flash"),
+    const { object } = await generateObject({
+      model: google("gemini-2.0-flash-001", {
+        structuredOutputs: false,
+      }),
+      schema: z.object({
+        questions: z.array(z.string()).describe("A list of domain-specific interview questions"),
+      }),
       prompt: `Prepare questions for a job interview.
         The job role is ${role}.
         The job experience level is ${level}.
@@ -50,17 +56,17 @@ export async function POST(request: Request) {
         Please return only the questions, without any additional text.
         Make the questions domain-specific. For example, if they are a Software Developer, ask them to explain specific concepts like variables, closure, React hooks, or system design based on their level. Dig into their specific projects if resume context is provided.
         The questions are going to be read by a voice assistant so do not use "/" or "*" or any other special characters which might break the voice assistant.
-        Return the questions formatted strictly as a JSON array of strings, like this:
-        ["Question 1", "Question 2", "Question 3"]
     `,
     });
+
+    const safeTechStack = Array.isArray(techstack) ? techstack : (techstack ? String(techstack).split(",") : []);
 
     const interview = {
       role: role,
       type: type,
       level: level,
-      techstack: techstack.split(","),
-      questions: JSON.parse(questions),
+      techstack: safeTechStack,
+      questions: object.questions,
       userId: userid,
       finalized: true,
       coverImage: getRandomInterviewCover(),
