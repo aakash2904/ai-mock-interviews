@@ -37,27 +37,40 @@ export async function POST(request: Request) {
       ? `The candidate's resume/CV text is below to help you tailor the questions to their actual experience, projects, and skills. Do NOT mention that you are reading their resume, just ask questions naturally based on it.\n\nResume content:\n###\n${resumeText}\n###\n`
       : "";
 
-    const { object } = await generateObject({
-      model: google("gemini-2.0-flash-001", {
-        structuredOutputs: false,
-      }),
-      schema: z.object({
-        questions: z.array(z.string()).describe("A list of domain-specific interview questions"),
-      }),
-      prompt: `Prepare questions for a job interview.
-        The job role is ${role}.
-        The job experience level is ${level}.
-        The tech stack used in the job is: ${techstack}.
-        The focus between behavioural and technical questions should lean towards: ${type}.
-        The amount of questions required is: ${amount}.
-        
-        ${promptContext}
-        
-        Please return only the questions, without any additional text.
-        Make the questions domain-specific. For example, if they are a Software Developer, ask them to explain specific concepts like variables, closure, React hooks, or system design based on their level. Dig into their specific projects if resume context is provided.
-        The questions are going to be read by a voice assistant so do not use "/" or "*" or any other special characters which might break the voice assistant.
-    `,
-    });
+    let finalQuestions: string[] = [];
+    try {
+      const { object } = await generateObject({
+        model: google("gemini-2.0-flash-001", {
+          structuredOutputs: false,
+        }),
+        schema: z.object({
+          questions: z.array(z.string()).describe("A list of domain-specific interview questions"),
+        }),
+        prompt: `Prepare questions for a job interview.
+          The job role is ${role}.
+          The job experience level is ${level}.
+          The tech stack used in the job is: ${techstack}.
+          The focus between behavioural and technical questions should lean towards: ${type}.
+          The amount of questions required is: ${amount}.
+          
+          ${promptContext}
+          
+          Please return only the questions, without any additional text.
+          Make the questions domain-specific. For example, if they are a Software Developer, ask them to explain specific concepts like variables, closure, React hooks, or system design based on their level. Dig into their specific projects if resume context is provided.
+          The questions are going to be read by a voice assistant so do not use "/" or "*" or any other special characters which might break the voice assistant.
+      `,
+      });
+      finalQuestions = object.questions;
+    } catch (aiError) {
+      console.warn("AI Generation limit reached. Using fallback questions.");
+      finalQuestions = [
+        `Could you walk me through your overall experience working as a ${role}?`,
+        `What are some of the most challenging problems you've solved recently in your career?`,
+        `Given the chance, how would you go about improving your team's workflow?`,
+        `Can you describe a time when you had to learn a complex topic really quickly?`,
+        `What is your proudest professional achievement so far?`
+      ];
+    }
 
     const safeTechStack = Array.isArray(techstack) ? techstack : (techstack ? String(techstack).split(",") : []);
 
@@ -66,7 +79,7 @@ export async function POST(request: Request) {
       type: type,
       level: level,
       techstack: safeTechStack,
-      questions: object.questions,
+      questions: finalQuestions,
       userId: userid,
       finalized: true,
       coverImage: getRandomInterviewCover(),
